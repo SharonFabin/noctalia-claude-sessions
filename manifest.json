@@ -1,0 +1,21 @@
+{
+  "id": "claude-sessions",
+  "name": "Claude Sessions",
+  "version": "1.0.0",
+  "minNoctaliaVersion": "4.0.0",
+  "author": "Sharon",
+  "license": "MIT",
+  "description": "Monitor active Claude Code sessions from cctop data",
+  "tags": ["Bar", "Development"],
+  "entryPoints": {
+    "main": "Main.qml",
+    "barWidget": "BarWidget.qml",
+    "panel": "Panel.qml"
+  },
+  "dependencies": {
+    "plugins": []
+  },
+  "metadata": {
+    "defaultSettings": {}
+  }
+}
