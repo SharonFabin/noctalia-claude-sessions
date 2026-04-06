@@ -1,37 +1,48 @@
 #!/bin/bash
-# Focus a tmux session+window in Hyprland.
-# If the session is detached, switches the current tmux client to it.
-# Usage: focus-session.sh <tmux_session> <tmux_window>
-TMUX_SESSION="$1"
-TMUX_WINDOW="$2"
+# Focus a Claude Code session in Hyprland.
+# For tmux sessions: switches client and focuses the terminal.
+# For non-tmux sessions: walks up from the Claude PID to find the terminal.
+# Usage: focus-session.sh <claude_pid> [tmux_session] [tmux_window]
+CLAUDE_PID="$1"
+TMUX_SESSION="$2"
+TMUX_WINDOW="$3"
 
-[ -z "$TMUX_SESSION" ] && exit 1
+[ -z "$CLAUDE_PID" ] && exit 1
 
-# Find any tmux client (prefer one attached to this session, else use any client)
-CLIENT_PID=$(tmux list-clients -t "$TMUX_SESSION" -F "#{client_pid}" 2>/dev/null | head -1)
+# Find terminal window by walking up the process tree from a starting PID
+find_and_focus_terminal() {
+  local PID="$1"
+  local CLIENTS_JSON
+  CLIENTS_JSON=$(hyprctl clients -j)
+  for _ in 1 2 3 4 5 6 7 8; do
+    local PARENT
+    PARENT=$(ps -o ppid= -p "$PID" 2>/dev/null | tr -d ' ')
+    [ -z "$PARENT" ] || [ "$PARENT" = "1" ] && return 1
+    local ADDR
+    ADDR=$(echo "$CLIENTS_JSON" | jq -r --arg p "$PARENT" '.[] | select(.pid == ($p | tonumber)) | .address // empty' | head -1)
+    if [ -n "$ADDR" ]; then
+      hyprctl dispatch focuswindow "pid:$PARENT"
+      return 0
+    fi
+    PID="$PARENT"
+  done
+  return 1
+}
 
-if [ -z "$CLIENT_PID" ]; then
-  # Session is detached — switch the first available tmux client to this session
-  CLIENT_PID=$(tmux list-clients -F "#{client_pid}" 2>/dev/null | head -1)
-  [ -z "$CLIENT_PID" ] && exit 1
-  tmux switch-client -t "$TMUX_SESSION" 2>/dev/null
-fi
+if [ -n "$TMUX_SESSION" ]; then
+  # Tmux path: switch client to session, select window, then focus terminal
+  CLIENT_PID=$(tmux list-clients -t "$TMUX_SESSION" -F "#{client_pid}" 2>/dev/null | head -1)
 
-# Select the target window
-[ -n "$TMUX_WINDOW" ] && tmux select-window -t "$TMUX_SESSION:$TMUX_WINDOW" 2>/dev/null
-
-# Walk up the process tree to find the terminal PID that Hyprland knows about
-PID="$CLIENT_PID"
-CLIENTS_JSON=$(hyprctl clients -j)
-for _ in 1 2 3 4 5; do
-  PARENT=$(ps -o ppid= -p "$PID" 2>/dev/null | tr -d ' ')
-  [ -z "$PARENT" ] || [ "$PARENT" = "1" ] && break
-  ADDR=$(echo "$CLIENTS_JSON" | jq -r --arg p "$PARENT" '.[] | select(.pid == ($p | tonumber)) | .address // empty' | head -1)
-  if [ -n "$ADDR" ]; then
-    hyprctl dispatch focuswindow "pid:$PARENT"
-    exit 0
+  if [ -z "$CLIENT_PID" ]; then
+    CLIENT_PID=$(tmux list-clients -F "#{client_pid}" 2>/dev/null | head -1)
+    [ -z "$CLIENT_PID" ] && exit 1
+    tmux switch-client -t "$TMUX_SESSION" 2>/dev/null
   fi
-  PID="$PARENT"
-done
 
-exit 1
+  [ -n "$TMUX_WINDOW" ] && tmux select-window -t "$TMUX_SESSION:$TMUX_WINDOW" 2>/dev/null
+
+  find_and_focus_terminal "$CLIENT_PID"
+else
+  # Non-tmux: walk up from the Claude process PID
+  find_and_focus_terminal "$CLAUDE_PID"
+fi

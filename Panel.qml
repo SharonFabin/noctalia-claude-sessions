@@ -43,9 +43,9 @@ Item {
 
   readonly property string focusScript: pluginApi ? pluginApi.pluginDir + "/scripts/focus-session.sh" : ""
 
-  function focusSession(tmuxSession, tmuxWindow) {
-    if (!tmuxSession || !root.focusScript) return
-    focusProc.command = ["bash", root.focusScript, tmuxSession, tmuxWindow || ""]
+  function focusSession(pid, tmuxSession, tmuxWindow) {
+    if (!root.focusScript || !pid) return
+    focusProc.command = ["bash", root.focusScript, pid.toString(), tmuxSession || "", tmuxWindow || ""]
     focusProc.running = true
     if (pluginApi) pluginApi.closePanel(null)
   }
@@ -54,7 +54,7 @@ Item {
     if (filteredSessions.length === 0) return
     var idx = Math.min(selectedIndex, filteredSessions.length - 1)
     var s = filteredSessions[idx]
-    if (s) focusSession(s.tmux_session, s.tmux_window)
+    if (s) focusSession(s.pid, s.tmux_session, s.tmux_window)
   }
 
   Process {
@@ -342,9 +342,9 @@ Item {
                   id: sessionMouse
                   anchors.fill: parent
                   hoverEnabled: true
-                  cursorShape: modelData.tmux_session ? Qt.PointingHandCursor : Qt.ArrowCursor
+                  cursorShape: Qt.PointingHandCursor
                   onClicked: {
-                    root.focusSession(modelData.tmux_session, modelData.tmux_window)
+                    root.focusSession(modelData.pid, modelData.tmux_session, modelData.tmux_window)
                   }
                 }
               }

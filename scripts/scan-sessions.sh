@@ -47,6 +47,7 @@ echo "$merged" | jq -c '
       model: (.model // ""),
       last_activity: (.last_activity // ""),
       started_at: (.started_at // ""),
+      pid: (.pid // 0),
       tmux_session: (.tmux_session // ""),
       tmux_window: (.tmux_window // "")
     }]
