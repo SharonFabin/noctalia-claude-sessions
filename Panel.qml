@@ -89,14 +89,14 @@ Item {
   }
 
   function statusLabel(status) {
-    if (!status) return "unknown"
+    if (!status) return pluginApi?.tr("status.unknown") ?? "unknown"
     if (status.startsWith("tool:")) return status.substring(5)
-    if (status === "idle:awaiting_plan") return "planning"
-    if (status === "idle:needs_input") return "needs input"
-    if (status === "awaiting_permission") return "needs permission"
-    if (status === "awaiting_input") return "needs input"
-    if (status === "awaiting_mcp_input") return "MCP input"
-    if (status.startsWith("error:")) return "error"
+    if (status === "idle:awaiting_plan") return pluginApi?.tr("status.planning") ?? "planning"
+    if (status === "idle:needs_input") return pluginApi?.tr("status.needs-input") ?? "needs input"
+    if (status === "awaiting_permission") return pluginApi?.tr("status.needs-permission") ?? "needs permission"
+    if (status === "awaiting_input") return pluginApi?.tr("status.needs-input") ?? "needs input"
+    if (status === "awaiting_mcp_input") return pluginApi?.tr("status.mcp-input") ?? "MCP input"
+    if (status.startsWith("error:")) return pluginApi?.tr("status.error") ?? "error"
     return status
   }
 
@@ -112,9 +112,9 @@ Item {
     var then = new Date(isoStr)
     var now = new Date()
     var diffSec = Math.floor((now - then) / 1000)
-    if (diffSec < 60) return diffSec + "s ago"
-    if (diffSec < 3600) return Math.floor(diffSec / 60) + "m ago"
-    return Math.floor(diffSec / 3600) + "h ago"
+    if (diffSec < 60) return pluginApi?.tr("time.seconds", { n: diffSec }) ?? (diffSec + "s ago")
+    if (diffSec < 3600) return pluginApi?.tr("time.minutes", { n: Math.floor(diffSec / 60) }) ?? (Math.floor(diffSec / 60) + "m ago")
+    return pluginApi?.tr("time.hours", { n: Math.floor(diffSec / 3600) }) ?? (Math.floor(diffSec / 3600) + "h ago")
   }
 
   Rectangle {
@@ -126,9 +126,9 @@ Item {
     ColumnLayout {
       anchors {
         fill: parent
-        margins: Style.marginM
+        margins: Style.marginL
       }
-      spacing: Style.marginM
+      spacing: Style.marginL
 
       // Header
       RowLayout {
@@ -142,7 +142,7 @@ Item {
         }
 
         NText {
-          text: "Claude Sessions"
+          text: pluginApi?.tr("panel.title") ?? "Claude Sessions"
           pointSize: Style.fontSizeL
           font.weight: Style.fontWeightBold
           color: Color.mOnSurface
@@ -164,6 +164,7 @@ Item {
         color: searchInput.activeFocus ? Color.mSurface : Color.mSurfaceVariant
         border.color: searchInput.activeFocus ? Color.mPrimary : "transparent"
         border.width: searchInput.activeFocus ? 1 : 0
+        visible: sessions.length > 1
 
         RowLayout {
           anchors.fill: parent
@@ -211,7 +212,7 @@ Item {
 
             NText {
               anchors.fill: parent
-              text: "Search sessions..."
+              text: pluginApi?.tr("panel.search") ?? "Search sessions..."
               color: Color.mOnSurfaceVariant
               pointSize: Style.fontSizeM
               visible: !searchInput.text
@@ -240,7 +241,9 @@ Item {
             // Empty state
             NText {
               visible: filteredSessions.length === 0
-              text: searchQuery ? "No matching sessions" : "No active sessions"
+              text: searchQuery
+                ? (pluginApi?.tr("panel.no-match") ?? "No matching sessions")
+                : (pluginApi?.tr("panel.empty") ?? "No active sessions")
               color: Color.mOnSurfaceVariant
               pointSize: Style.fontSizeM
               Layout.alignment: Qt.AlignHCenter

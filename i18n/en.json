@@ -1,0 +1,44 @@
+{
+  "widget": {
+    "tooltip": {
+      "active": "{count} active",
+      "idle": "{count} idle",
+      "waiting": "{count} waiting",
+      "error": "{count} error",
+      "none": "No sessions",
+      "prefix": "Claude Code"
+    }
+  },
+  "panel": {
+    "title": "Claude Sessions",
+    "search": "Search sessions...",
+    "empty": "No active sessions",
+    "no-match": "No matching sessions"
+  },
+  "status": {
+    "unknown": "unknown",
+    "thinking": "thinking",
+    "started": "started",
+    "resumed": "resumed",
+    "idle": "idle",
+    "planning": "planning",
+    "needs-input": "needs input",
+    "needs-permission": "needs permission",
+    "mcp-input": "MCP input",
+    "error": "error"
+  },
+  "time": {
+    "seconds": "{n}s ago",
+    "minutes": "{n}m ago",
+    "hours": "{n}h ago"
+  },
+  "menu": {
+    "settings": "Widget settings"
+  },
+  "settings": {
+    "poll-interval": {
+      "label": "Poll interval (seconds)",
+      "desc": "How often to scan for session updates"
+    }
+  }
+}

@@ -23,19 +23,20 @@ Item {
   readonly property int errorCount: mainInstance ? mainInstance.errorCount : 0
   readonly property int totalCount: mainInstance ? mainInstance.totalCount : 0
 
-  readonly property string barPosition: Settings.data.bar.position || "top"
-  readonly property bool barIsVertical: barPosition === "left" || barPosition === "right"
-  readonly property real capsuleHeight: Style.capsuleHeight
-  readonly property real barFontSize: Style.barFontSize
+  readonly property string screenName: screen?.name ?? ""
+  readonly property string barPosition: Settings.getBarPositionForScreen(screenName)
+  readonly property bool isVertical: barPosition === "left" || barPosition === "right"
+  readonly property real capsuleHeight: Style.getCapsuleHeightForScreen(screenName)
+  readonly property real barFontSize: Style.getBarFontSizeForScreen(screenName)
 
   readonly property real contentWidth: {
-    if (barIsVertical) return capsuleHeight
+    if (isVertical) return capsuleHeight
     return contentRow.implicitWidth + Style.marginM * 2
   }
   readonly property real contentHeight: capsuleHeight
 
-  implicitWidth: contentWidth
-  implicitHeight: contentHeight
+  implicitWidth: isVertical ? capsuleHeight : contentWidth
+  implicitHeight: isVertical ? contentHeight : capsuleHeight
 
   Rectangle {
     id: visualCapsule
@@ -66,7 +67,7 @@ Item {
 
       // Active count
       RowLayout {
-        visible: !barIsVertical && root.activeCount > 0
+        visible: !root.isVertical && root.activeCount > 0
         spacing: 2
         NText {
           text: "\u25CF"
@@ -83,7 +84,7 @@ Item {
 
       // Idle count
       RowLayout {
-        visible: !barIsVertical && root.idleCount > 0
+        visible: !root.isVertical && root.idleCount > 0
         spacing: 2
         NText {
           text: "\u25CB"
@@ -100,7 +101,7 @@ Item {
 
       // Waiting count
       RowLayout {
-        visible: !barIsVertical && root.waitingCount > 0
+        visible: !root.isVertical && root.waitingCount > 0
         spacing: 2
         NText {
           text: "\u25C6"
@@ -117,7 +118,7 @@ Item {
 
       // Error count
       RowLayout {
-        visible: !barIsVertical && root.errorCount > 0
+        visible: !root.isVertical && root.errorCount > 0
         spacing: 2
         NText {
           text: "\u2716"
@@ -134,6 +135,20 @@ Item {
     }
   }
 
+  NPopupContextMenu {
+    id: contextMenu
+    model: [
+      { "label": pluginApi?.tr("menu.settings"), "action": "settings", "icon": "settings" }
+    ]
+    onTriggered: action => {
+      contextMenu.close()
+      PanelService.closeContextMenu(screen)
+      if (action === "settings") {
+        BarService.openPluginSettings(screen, pluginApi.manifest)
+      }
+    }
+  }
+
   MouseArea {
     id: mouseArea
     anchors.fill: parent
@@ -142,23 +157,27 @@ Item {
     acceptedButtons: Qt.LeftButton | Qt.RightButton
 
     onEntered: {
-      var tip = "Claude Code: "
       var parts = []
-      if (root.activeCount > 0) parts.push(root.activeCount + " active")
-      if (root.idleCount > 0) parts.push(root.idleCount + " idle")
-      if (root.waitingCount > 0) parts.push(root.waitingCount + " waiting")
-      if (root.errorCount > 0) parts.push(root.errorCount + " error")
-      if (parts.length === 0) parts.push("no sessions")
-      tip += parts.join(", ")
+      if (root.activeCount > 0)
+        parts.push(pluginApi?.tr("widget.tooltip.active", { count: root.activeCount }))
+      if (root.idleCount > 0)
+        parts.push(pluginApi?.tr("widget.tooltip.idle", { count: root.idleCount }))
+      if (root.waitingCount > 0)
+        parts.push(pluginApi?.tr("widget.tooltip.waiting", { count: root.waitingCount }))
+      if (root.errorCount > 0)
+        parts.push(pluginApi?.tr("widget.tooltip.error", { count: root.errorCount }))
+      if (parts.length === 0)
+        parts.push(pluginApi?.tr("widget.tooltip.none"))
+      var tip = pluginApi?.tr("widget.tooltip.prefix") + ": " + parts.join(", ")
       TooltipService.show(root, tip, BarService.getTooltipDirection())
     }
     onExited: TooltipService.hide()
 
     onClicked: (mouse) => {
       if (mouse.button === Qt.LeftButton) {
-        if (pluginApi) {
-          pluginApi.openPanel(root.screen, root)
-        }
+        if (pluginApi) pluginApi.togglePanel(root.screen, root)
+      } else if (mouse.button === Qt.RightButton) {
+        PanelService.showContextMenu(contextMenu, root, screen)
       }
     }
   }

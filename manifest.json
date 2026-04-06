@@ -2,20 +2,24 @@
   "id": "claude-sessions",
   "name": "Claude Sessions",
   "version": "1.0.0",
-  "minNoctaliaVersion": "4.0.0",
-  "author": "Sharon",
+  "minNoctaliaVersion": "4.4.1",
+  "author": "SharonFabin",
   "license": "MIT",
+  "repository": "https://github.com/noctalia-dev/noctalia-plugins",
   "description": "Monitor active Claude Code sessions from cctop data",
-  "tags": ["Bar", "Development"],
+  "tags": ["Bar", "Panel", "Development"],
   "entryPoints": {
     "main": "Main.qml",
     "barWidget": "BarWidget.qml",
-    "panel": "Panel.qml"
+    "panel": "Panel.qml",
+    "settings": "Settings.qml"
   },
   "dependencies": {
     "plugins": []
   },
   "metadata": {
-    "defaultSettings": {}
+    "defaultSettings": {
+      "pollInterval": 2
+    }
   }
 }

@@ -8,6 +8,10 @@ Item {
 
   property var pluginApi: null
 
+  property var cfg: pluginApi?.pluginSettings || ({})
+  property var defaults: pluginApi?.manifest?.metadata?.defaultSettings || ({})
+  readonly property int pollInterval: (cfg.pollInterval ?? defaults.pollInterval ?? 2) * 1000
+
   property int activeCount: 0
   property int idleCount: 0
   property int waitingCount: 0
@@ -16,6 +20,7 @@ Item {
   property var sessions: []
 
   readonly property string scriptPath: pluginApi ? pluginApi.pluginDir + "/scripts/scan-sessions.sh" : ""
+
   // cctop poller — runs as a child of Quickshell, dies and restarts with it
   property string pollerPath: ""
   Process {
@@ -40,7 +45,7 @@ Item {
 
   Timer {
     id: pollTimer
-    interval: 2000
+    interval: root.pollInterval
     repeat: true
     running: root.scriptPath !== ""
     triggeredOnStart: true
@@ -83,6 +88,6 @@ Item {
   }
 
   Component.onCompleted: {
-    Logger.i("ClaudeSessions", "Plugin loaded, poller started")
+    Logger.i("ClaudeSessions", "Plugin loaded, poll interval: " + root.pollInterval + "ms")
   }
 }
