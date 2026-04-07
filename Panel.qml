@@ -16,12 +16,17 @@ Item {
   readonly property var sessions: mainInstance ? mainInstance.sessions : []
   property string searchQuery: ""
   readonly property var filteredSessions: {
-    if (!searchQuery) return sessions
-    var q = searchQuery.toLowerCase()
-    return sessions.filter(function(s) {
-      return (s.name && s.name.toLowerCase().indexOf(q) !== -1) ||
-             (s.tmux_session && s.tmux_session.toLowerCase().indexOf(q) !== -1)
+    var list = searchQuery
+      ? sessions.filter(function(s) {
+          var q = searchQuery.toLowerCase()
+          return (s.name && s.name.toLowerCase().indexOf(q) !== -1) ||
+                 (s.tmux_session && s.tmux_session.toLowerCase().indexOf(q) !== -1)
+        })
+      : [].concat(sessions)
+    list.sort(function(a, b) {
+      return (b.last_activity || "").localeCompare(a.last_activity || "")
     })
+    return list
   }
   readonly property bool panelReady: pluginApi !== null && mainInstance !== null && mainInstance !== undefined
 
@@ -48,6 +53,17 @@ Item {
     focusProc.command = ["bash", root.focusScript, pid.toString(), tmuxSession || "", tmuxWindow || ""]
     focusProc.running = true
     if (pluginApi) pluginApi.closePanel(null)
+  }
+
+  function ensureVisible() {
+    var item = sessionRepeater.itemAt(selectedIndex)
+    if (!item || !sessionFlickable) return
+    var itemTop = item.y
+    var itemBottom = itemTop + item.height
+    if (itemTop < sessionFlickable.contentY)
+      sessionFlickable.contentY = itemTop
+    else if (itemBottom > sessionFlickable.contentY + sessionFlickable.height)
+      sessionFlickable.contentY = itemBottom - sessionFlickable.height
   }
 
   function selectCurrent() {
@@ -191,15 +207,19 @@ Item {
             Keys.onPressed: (event) => {
               if (event.key === Qt.Key_N && event.modifiers & Qt.ControlModifier) {
                 root.selectedIndex = Math.min(root.selectedIndex + 1, root.filteredSessions.length - 1)
+                root.ensureVisible()
                 event.accepted = true
               } else if (event.key === Qt.Key_P && event.modifiers & Qt.ControlModifier) {
                 root.selectedIndex = Math.max(root.selectedIndex - 1, 0)
+                root.ensureVisible()
                 event.accepted = true
               } else if (event.key === Qt.Key_Down) {
                 root.selectedIndex = Math.min(root.selectedIndex + 1, root.filteredSessions.length - 1)
+                root.ensureVisible()
                 event.accepted = true
               } else if (event.key === Qt.Key_Up) {
                 root.selectedIndex = Math.max(root.selectedIndex - 1, 0)
+                root.ensureVisible()
                 event.accepted = true
               } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
                 root.selectCurrent()
@@ -228,6 +248,7 @@ Item {
         Layout.fillHeight: true
 
         Flickable {
+          id: sessionFlickable
           anchors.fill: parent
           anchors.margins: Style.marginS
           contentHeight: sessionColumn.implicitHeight
@@ -251,6 +272,7 @@ Item {
             }
 
             Repeater {
+              id: sessionRepeater
               model: filteredSessions
 
               Rectangle {
