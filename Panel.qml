@@ -52,7 +52,7 @@ Item {
     if (!root.focusScript || !pid) return
     focusProc.command = ["bash", root.focusScript, pid.toString(), tmuxSession || "", tmuxWindow || ""]
     focusProc.running = true
-    if (pluginApi) pluginApi.closePanel(null)
+    if (pluginApi) pluginApi.closePanel(pluginApi.panelOpenScreen)
   }
 
   function ensureVisible() {
@@ -225,7 +225,7 @@ Item {
                 root.selectCurrent()
                 event.accepted = true
               } else if (event.key === Qt.Key_Escape) {
-                if (pluginApi) pluginApi.closePanel(null)
+                if (pluginApi) pluginApi.closePanel(pluginApi.panelOpenScreen)
                 event.accepted = true
               }
             }
