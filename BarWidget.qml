@@ -19,9 +19,29 @@ Item {
   readonly property var mainInstance: pluginApi?.mainInstance
   readonly property int activeCount: mainInstance ? mainInstance.activeCount : 0
   readonly property int idleCount: mainInstance ? mainInstance.idleCount : 0
+  readonly property int doneCount: mainInstance ? mainInstance.doneCount : 0
   readonly property int waitingCount: mainInstance ? mainInstance.waitingCount : 0
   readonly property int errorCount: mainInstance ? mainInstance.errorCount : 0
   readonly property int totalCount: mainInstance ? mainInstance.totalCount : 0
+  readonly property var sessions: mainInstance ? mainInstance.sessions : []
+  readonly property color doneColor: "#4caf50"
+  readonly property string agentSummary: {
+    if (!sessions || sessions.length === 0) return "AI 0"
+
+    var counts = {}
+    for (var i = 0; i < sessions.length; i++) {
+      var agent = sessions[i].agent || "agent"
+      counts[agent] = (counts[agent] || 0) + 1
+    }
+
+    var keys = Object.keys(counts).sort()
+    var parts = []
+    for (var j = 0; j < keys.length; j++) {
+      var label = root.agentLabel(keys[j])
+      parts.push(label + " " + counts[keys[j]])
+    }
+    return parts.join(" / ")
+  }
 
   readonly property string screenName: screen?.name ?? ""
   readonly property string barPosition: Settings.getBarPositionForScreen(screenName)
@@ -61,8 +81,17 @@ Item {
         color: {
           if (root.waitingCount > 0) return Color.mError
           if (root.activeCount > 0) return Color.mPrimary
+          if (root.doneCount > 0) return root.doneColor
           return mouseArea.containsMouse ? Color.mOnHover : Color.mOnSurfaceVariant
         }
+      }
+
+      NText {
+        visible: !root.isVertical
+        text: "AI Agents"
+        color: mouseArea.containsMouse ? Color.mOnHover : Color.mOnSurface
+        pointSize: root.barFontSize
+        family: Settings.data.ui.fontFixed
       }
 
       // Active count
@@ -94,6 +123,23 @@ Item {
         NText {
           text: root.idleCount.toString()
           color: mouseArea.containsMouse ? Color.mOnHover : Color.mOnSurfaceVariant
+          pointSize: root.barFontSize
+          family: Settings.data.ui.fontFixed
+        }
+      }
+
+      // Done count
+      RowLayout {
+        visible: !root.isVertical && root.doneCount > 0
+        spacing: 2
+        NText {
+          text: "\u2713"
+          color: root.doneColor
+          pointSize: root.barFontSize * 0.8
+        }
+        NText {
+          text: root.doneCount.toString()
+          color: root.doneColor
           pointSize: root.barFontSize
           family: Settings.data.ui.fontFixed
         }
@@ -149,6 +195,13 @@ Item {
     }
   }
 
+  function agentLabel(agent) {
+    if (agent === "codex") return "Codex"
+    if (agent === "claude") return "Claude"
+    if (!agent) return "Agent"
+    return agent.charAt(0).toUpperCase() + agent.slice(1)
+  }
+
   MouseArea {
     id: mouseArea
     anchors.fill: parent
@@ -162,13 +215,15 @@ Item {
         parts.push(pluginApi?.tr("widget.tooltip.active", { count: root.activeCount }))
       if (root.idleCount > 0)
         parts.push(pluginApi?.tr("widget.tooltip.idle", { count: root.idleCount }))
+      if (root.doneCount > 0)
+        parts.push(pluginApi?.tr("widget.tooltip.done", { count: root.doneCount }))
       if (root.waitingCount > 0)
         parts.push(pluginApi?.tr("widget.tooltip.waiting", { count: root.waitingCount }))
       if (root.errorCount > 0)
         parts.push(pluginApi?.tr("widget.tooltip.error", { count: root.errorCount }))
       if (parts.length === 0)
         parts.push(pluginApi?.tr("widget.tooltip.none"))
-      var tip = pluginApi?.tr("widget.tooltip.prefix") + ": " + parts.join(", ")
+      var tip = pluginApi?.tr("widget.tooltip.prefix") + " (" + root.agentSummary + "): " + parts.join(", ")
       TooltipService.show(root, tip, BarService.getTooltipDirection())
     }
     onExited: TooltipService.hide()

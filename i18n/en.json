@@ -3,20 +3,24 @@
     "tooltip": {
       "active": "{count} active",
       "idle": "{count} idle",
+      "done": "{count} done",
       "waiting": "{count} waiting",
       "error": "{count} error",
       "none": "No sessions",
-      "prefix": "Claude Code"
+      "prefix": "AI Agents"
     }
   },
   "panel": {
-    "title": "Claude Sessions",
-    "search": "Search sessions...",
+    "title": "AI Agents",
+    "search": "Search agents...",
     "empty": "No active sessions",
     "no-match": "No matching sessions"
   },
   "status": {
     "unknown": "unknown",
+    "working": "working",
+    "blocked": "blocked",
+    "done": "done",
     "thinking": "thinking",
     "started": "started",
     "resumed": "resumed",
@@ -26,6 +30,9 @@
     "needs-permission": "needs permission",
     "mcp-input": "MCP input",
     "error": "error"
+  },
+  "agent": {
+    "default": "Agent"
   },
   "time": {
     "seconds": "{n}s ago",

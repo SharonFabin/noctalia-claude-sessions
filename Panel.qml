@@ -15,24 +15,22 @@ Item {
   readonly property var mainInstance: pluginApi?.mainInstance
   readonly property var sessions: mainInstance ? mainInstance.sessions : []
   property string searchQuery: ""
+  readonly property color doneColor: "#4caf50"
   readonly property var filteredSessions: {
     var list = searchQuery
       ? sessions.filter(function(s) {
           var q = searchQuery.toLowerCase()
-          return (s.name && s.name.toLowerCase().indexOf(q) !== -1) ||
-                 (s.tmux_session && s.tmux_session.toLowerCase().indexOf(q) !== -1)
+          return root.sessionMatches(s, q)
         })
       : [].concat(sessions)
-    list.sort(function(a, b) {
-      return (b.last_activity || "").localeCompare(a.last_activity || "")
-    })
+    list.sort(root.compareSessions)
     return list
   }
   readonly property bool panelReady: pluginApi !== null && mainInstance !== null && mainInstance !== undefined
 
   property int selectedIndex: 0
 
-  property real contentPreferredWidth: panelReady ? 420 * Style.uiScaleRatio : 0
+  property real contentPreferredWidth: panelReady ? 460 * Style.uiScaleRatio : 0
   property real contentPreferredHeight: panelReady ? Math.max(200, Math.min(500, 80 + sessions.length * 72)) * Style.uiScaleRatio : 0
 
   anchors.fill: parent
@@ -48,9 +46,51 @@ Item {
 
   readonly property string focusScript: pluginApi ? pluginApi.pluginDir + "/scripts/focus-session.sh" : ""
 
-  function focusSession(pid, tmuxSession, tmuxWindow) {
-    if (!root.focusScript || !pid) return
-    focusProc.command = ["bash", root.focusScript, pid.toString(), tmuxSession || "", tmuxWindow || ""]
+  function sessionMatches(session, query) {
+    var fields = [
+      session.name,
+      session.agent,
+      session.status,
+      session.cwd,
+      session.tmux_session,
+      session.workspace_name,
+      session.tab_name,
+      session.workspace_id,
+      session.tab_id,
+      session.pane_id
+    ]
+    for (var i = 0; i < fields.length; i++) {
+      if (fields[i] && fields[i].toString().toLowerCase().indexOf(query) !== -1) return true
+    }
+    return false
+  }
+
+  function statusRank(session) {
+    var status = session.status || ""
+    if (status === "blocked" || status.startsWith("awaiting_") || status === "idle:needs_input" || status.startsWith("error:")) return 0
+    if (status === "done") return 1
+    if (status === "working" || status.startsWith("thinking") || status.startsWith("tool:") || status === "started") return 2
+    if (status === "idle" || status === "unknown" || status === "resumed" || status === "idle:awaiting_plan") return 3
+    return 3
+  }
+
+  function compareSessions(a, b) {
+    var rankCompare = root.statusRank(a) - root.statusRank(b)
+    if (rankCompare !== 0) return rankCompare
+    var lastActivityCompare = (b.last_activity || "").localeCompare(a.last_activity || "")
+    if (lastActivityCompare !== 0) return lastActivityCompare
+    return ((a.name || a.pane_id || "")).localeCompare(b.name || b.pane_id || "")
+  }
+
+  function focusSession(session) {
+    if (!root.focusScript || !session) return
+    if (session.source === "herdr") {
+      if (!session.workspace_id && !session.tab_id) return
+      focusProc.command = ["bash", root.focusScript, "--herdr", session.workspace_id || "", session.tab_id || "", session.pane_id || ""]
+    } else {
+      if (!session.pid) return
+      focusProc.command = ["bash", root.focusScript, session.pid.toString(), session.tmux_session || "", session.tmux_window || ""]
+    }
     focusProc.running = true
     if (pluginApi) pluginApi.closePanel(pluginApi.panelOpenScreen)
   }
@@ -70,7 +110,7 @@ Item {
     if (filteredSessions.length === 0) return
     var idx = Math.min(selectedIndex, filteredSessions.length - 1)
     var s = filteredSessions[idx]
-    if (s) focusSession(s.pid, s.tmux_session, s.tmux_window)
+    if (s) focusSession(s)
   }
 
   Process {
@@ -80,9 +120,15 @@ Item {
 
   function statusColor(status) {
     if (!status) return Color.mOnSurfaceVariant
+    if (status === "working")
+      return Color.mPrimary
+    if (status === "blocked")
+      return Color.mError
+    if (status === "done")
+      return root.doneColor
     if (status.startsWith("thinking") || status.startsWith("tool:") || status === "started")
       return Color.mPrimary
-    if (status === "resumed")
+    if (status === "idle" || status === "unknown" || status === "resumed")
       return Color.mOnSurfaceVariant
     if (status.startsWith("awaiting_") || status === "idle:needs_input")
       return Color.mError
@@ -93,6 +139,9 @@ Item {
 
   function statusIcon(status) {
     if (!status) return "circle"
+    if (status === "working") return "brain"
+    if (status === "blocked") return "bell"
+    if (status === "done") return "circle-check"
     if (status.startsWith("tool:")) return "hammer"
     if (status === "thinking") return "brain"
     if (status === "started") return "player-play"
@@ -106,6 +155,10 @@ Item {
 
   function statusLabel(status) {
     if (!status) return pluginApi?.tr("status.unknown") ?? "unknown"
+    if (status === "working") return pluginApi?.tr("status.working") ?? "working"
+    if (status === "blocked") return pluginApi?.tr("status.blocked") ?? "blocked"
+    if (status === "done") return pluginApi?.tr("status.done") ?? "done"
+    if (status === "unknown") return pluginApi?.tr("status.unknown") ?? "unknown"
     if (status.startsWith("tool:")) return status.substring(5)
     if (status === "idle:awaiting_plan") return pluginApi?.tr("status.planning") ?? "planning"
     if (status === "idle:needs_input") return pluginApi?.tr("status.needs-input") ?? "needs input"
@@ -114,6 +167,24 @@ Item {
     if (status === "awaiting_mcp_input") return pluginApi?.tr("status.mcp-input") ?? "MCP input"
     if (status.startsWith("error:")) return pluginApi?.tr("status.error") ?? "error"
     return status
+  }
+
+  function agentLabel(agent) {
+    if (!agent) return pluginApi?.tr("agent.default") ?? "Agent"
+    return agent.charAt(0).toUpperCase() + agent.slice(1)
+  }
+
+  function sessionLocation(session) {
+    if (session.source === "herdr") {
+      var parts = []
+      if (session.workspace_name) parts.push(session.workspace_name)
+      else if (session.workspace_id) parts.push(session.workspace_id)
+      if (session.tab_name) parts.push(session.tab_name)
+      else if (session.tab_id) parts.push(session.tab_id)
+      if (session.pane_id) parts.push(session.pane_id)
+      return parts.join(" / ")
+    }
+    return session.tmux_session ? ("@ " + session.tmux_session) : ""
   }
 
   function cwdShort(cwd) {
@@ -158,7 +229,7 @@ Item {
         }
 
         NText {
-          text: pluginApi?.tr("panel.title") ?? "Claude Sessions"
+          text: pluginApi?.tr("panel.title") ?? "AI Agent Sessions"
           pointSize: Style.fontSizeL
           font.weight: Style.fontWeightBold
           color: Color.mOnSurface
@@ -232,7 +303,7 @@ Item {
 
             NText {
               anchors.fill: parent
-              text: pluginApi?.tr("panel.search") ?? "Search sessions..."
+              text: pluginApi?.tr("panel.search") ?? "Search agents..."
               color: Color.mOnSurfaceVariant
               pointSize: Style.fontSizeM
               visible: !searchInput.text
@@ -282,10 +353,15 @@ Item {
                 color: {
                   if (index === root.selectedIndex) return Qt.alpha(Color.mPrimary, 0.1)
                   if (sessionMouse.containsMouse) return Color.mHover
+                  if (modelData.status === "done") return Qt.alpha(root.doneColor, 0.08)
                   return "transparent"
                 }
-                border.color: index === root.selectedIndex ? Qt.alpha(Color.mPrimary, 0.3) : "transparent"
-                border.width: index === root.selectedIndex ? 1 : 0
+                border.color: {
+                  if (index === root.selectedIndex) return Qt.alpha(Color.mPrimary, 0.3)
+                  if (modelData.status === "done") return Qt.alpha(root.doneColor, 0.35)
+                  return "transparent"
+                }
+                border.width: (index === root.selectedIndex || modelData.status === "done") ? 1 : 0
 
                 ColumnLayout {
                   id: sessionRow
@@ -308,6 +384,13 @@ Item {
                     }
 
                     NText {
+                      text: agentLabel(modelData.agent)
+                      color: Color.mOnSurface
+                      pointSize: Style.fontSizeM
+                      font.weight: Style.fontWeightMedium
+                    }
+
+                    NText {
                       text: statusLabel(modelData.status)
                       color: statusColor(modelData.status)
                       pointSize: Style.fontSizeM
@@ -317,9 +400,13 @@ Item {
                     Item { Layout.fillWidth: true }
 
                     NText {
+                      visible: !!modelData.last_activity
                       text: timeAgo(modelData.last_activity)
                       color: Color.mOnSurfaceVariant
                       pointSize: Style.fontSizeS
+                      Layout.alignment: Qt.AlignRight
+                      Layout.minimumWidth: implicitWidth
+                      Layout.preferredWidth: implicitWidth
                     }
                   }
 
@@ -333,14 +420,18 @@ Item {
                       color: Color.mOnSurface
                       pointSize: Style.fontSizeS
                       font.weight: Style.fontWeightMedium
+                      elide: Text.ElideRight
+                      Layout.maximumWidth: sessionRow.width * 0.42
                     }
 
                     NText {
-                      visible: !!modelData.tmux_session
-                      text: modelData.tmux_session ? ("@ " + modelData.tmux_session) : ""
+                      visible: sessionLocation(modelData) !== ""
+                      text: sessionLocation(modelData)
                       color: Color.mOnSurfaceVariant
                       pointSize: Style.fontSizeS
                       opacity: 0.7
+                      elide: Text.ElideMiddle
+                      Layout.maximumWidth: sessionRow.width * 0.35
                     }
 
                     NText {
@@ -369,7 +460,7 @@ Item {
                   hoverEnabled: true
                   cursorShape: Qt.PointingHandCursor
                   onClicked: {
-                    root.focusSession(modelData.pid, modelData.tmux_session, modelData.tmux_window)
+                    root.focusSession(modelData)
                   }
                 }
               }

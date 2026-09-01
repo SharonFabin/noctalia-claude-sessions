@@ -14,6 +14,7 @@ Item {
 
   property int activeCount: 0
   property int idleCount: 0
+  property int doneCount: 0
   property int waitingCount: 0
   property int errorCount: 0
   property int totalCount: 0
@@ -64,6 +65,7 @@ Item {
           var result = JSON.parse(data)
           root.activeCount = result.active || 0
           root.idleCount = result.idle || 0
+          root.doneCount = result.done || 0
           root.waitingCount = result.waiting || 0
           root.errorCount = result.error || 0
           root.totalCount = result.total || 0

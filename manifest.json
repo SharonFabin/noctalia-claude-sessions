@@ -1,12 +1,12 @@
 {
   "id": "claude-sessions",
-  "name": "Claude Sessions",
-  "version": "1.0.0",
+  "name": "AI Agents",
+  "version": "1.1.0",
   "minNoctaliaVersion": "4.4.1",
   "author": "SharonFabin",
   "license": "MIT",
   "repository": "https://github.com/noctalia-dev/noctalia-plugins",
-  "description": "Monitor active Claude Code sessions from cctop data",
+  "description": "Monitor active AI agent sessions from herdr, with cctop fallback for Claude Code",
   "tags": ["Bar", "Panel", "Development"],
   "entryPoints": {
     "main": "Main.qml",
