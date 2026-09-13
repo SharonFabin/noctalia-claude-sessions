@@ -1,72 +1,58 @@
-# AI Agent Sessions
+# AI Agents
 
-A Noctalia bar widget for monitoring active AI agent sessions. It prefers [herdr](https://herdr.dev/) agent panes, so Claude, Codex, and any other herdr-detected agents show in one place. If herdr is not running, it falls back to [cctop](https://github.com/DeanLa/cctop) hook data for Claude Code sessions.
-
-![Preview](preview.png)
+A Noctalia v5 plugin that lists every [herdr](https://herdr.dev/) agent pane (Claude, Codex, or anything else herdr detects), with its status and how long ago that status last changed. Click an agent to jump to it.
 
 ## Features
 
-- **Bar widget** — compact agent counts with colored status indicators
-  - Green dot: active (thinking, tool use)
-  - Gray dot: idle
-  - Green check: done
-  - Red diamond: waiting for input/permission
-- **Session panel** — click the widget or press the keybind to open
-  - Search/filter by agent, session name, workspace, tab, pane, tmux session, or path
-  - Keyboard navigation (Ctrl+N/P or arrow keys, Enter to select, Esc to close)
-  - Click or press Enter to focus the herdr terminal window, herdr workspace/tab, or the session's terminal and tmux window
-- **Herdr integration** — reads `herdr pane list` and shows all panes with detected agents
-- **Tmux integration** — switches to the correct tmux session and window, works with detached cctop sessions
-- **cctop fallback** — keeps the original Claude Code hook support when herdr is unavailable
+- **Bar widget**: a sparkles glyph tinted by the most urgent status, plus per-status counts (needs input, working, done, idle).
+- **Panel**: agents sorted by urgency, then most recently changed. Type to filter by name, agent, status, workspace, tab, pane id or cwd. Use Up/Down or Ctrl+N/P and Enter, or click.
+- **Focus**: runs `herdr workspace focus`, `herdr tab focus` and `herdr agent focus` (attached clients only follow workspace/tab focus), then raises the Hyprland window of the terminal running herdr (which also switches Hyprland workspace).
 
 ## Requirements
 
-- `herdr` — for multi-agent session detection and herdr focus
-- [cctop](https://github.com/DeanLa/cctop) Claude Code plugin (optional fallback)
-- `jq` — JSON processor
-- `tmux` — for cctop session focus
-- Hyprland — for herdr and cctop window focus (uses `hyprctl`)
+- `herdr` with a running server whose protocol matches the CLI (`herdr status server`)
+- Hyprland (`hyprctl`)
+- `jq`
 
 ## Installation
 
-1. Clone into your Noctalia plugins directory:
-   ```bash
-   git clone https://github.com/SharonFabin/noctalia-claude-sessions.git \
-     ~/.config/noctalia/plugins/claude-sessions
-   ```
-
-2. Register in `~/.config/noctalia/plugins.json`:
-   ```json
-   "claude-sessions": {
-     "enabled": true,
-     "sourceUrl": "local"
-   }
-   ```
-
-3. Restart Noctalia:
-   ```bash
-   qs kill -c noctalia-shell && qs -c noctalia-shell -d
-   ```
-
-4. Enable in **Settings > Plugins**, then add to your bar in **Settings > Bar**.
-
-## Keybind (optional)
-
-Add to your Hyprland config to toggle the panel with a hotkey:
-
+```sh
+git clone https://github.com/SharonFabin/noctalia-claude-sessions.git \
+  ~/.local/share/noctalia/plugins/claude-sessions
+noctalia msg plugins enable SharonFabin/claude-sessions
 ```
-bind = SUPER, I, exec, qs ipc -c noctalia-shell call plugin:claude-sessions toggle
+
+Add the widget to a bar in `~/.config/noctalia/config.toml`:
+
+```toml
+[bar.default]
+end = [ "ai_agents", "tray", ... ]
+
+[widget.ai_agents]
+type = "SharonFabin/claude-sessions:bar"
 ```
+
+## Keybind
+
+```lua
+-- Hyprland
+bind = SUPER, I, exec, noctalia msg panel-toggle SharonFabin/claude-sessions:panel
+```
+
+## Settings
+
+| Key | Default | |
+| --- | --- | --- |
+| `poll_interval_ms` | `2000` | How often `herdr api snapshot` is read |
+| `socket_path` | empty | herdr socket for a non-default server (`HERDR_SOCKET_PATH`) |
 
 ## How it works
 
-Every 2 seconds the widget tries `herdr pane list` and normalizes panes that report an `agent`. Herdr statuses map to the widget counts as:
+The service polls `herdr api snapshot` and publishes one row per agent pane through `noctalia.state`, and the bar and panel render from that. herdr does not report timestamps, so "last update" is the time the service first saw an agent's current `(agent_status, state_change_seq)`. That is persisted in the plugin data dir, so reloading the shell does not reset it.
 
-- `working` -> active
-- `idle`, `unknown` -> idle
-- `done` -> done
-- `blocked` -> waiting
+IPC on the service entry:
 
-When herdr is unavailable or reports no agents, the widget reads session status files from `~/.cctop/` written by cctop's Claude Code hook and preserves the original Claude-only behavior.
-
-When focusing a herdr session, it asks herdr for the pane process info, walks up from the pane shell PID to find the owning Hyprland terminal window, switches to that Hyprland workspace, focuses the terminal, then focuses the containing herdr workspace and tab. Herdr does not currently expose a direct focus-by-pane-id command, so the panel displays the exact pane id for tabs that contain multiple panes. For cctop sessions, it finds the terminal window via the tmux client's process tree and uses `hyprctl` to bring it to the front.
+```sh
+noctalia msg plugin SharonFabin/claude-sessions:service all focus <pane_id>
+noctalia msg plugin SharonFabin/claude-sessions:service all refresh
+```

@@ -1,0 +1,43 @@
+{
+  "title": "AI Agents",
+  "panel": {
+    "search": "Search agents...",
+    "empty": "No herdr agents running",
+    "no_match": "No matching agents",
+    "older": "Older than 24h",
+    "more_above": "{n} more above",
+    "more_below": "{n} more below"
+  },
+  "status": {
+    "idle": "idle",
+    "working": "working",
+    "blocked": "needs input",
+    "done": "done",
+    "unknown": "unknown"
+  },
+  "time": {
+    "seconds": "{n}s ago",
+    "minutes": "{n}m ago",
+    "hours": "{n}h ago",
+    "days": "{n}d ago"
+  },
+  "error": {
+    "herdr_missing": "herdr is not installed",
+    "herdr_unavailable": "herdr server is not reachable",
+    "focus_failed": "Could not focus agent: {detail}"
+  },
+  "settings": {
+    "poll_interval_ms": {
+      "label": "Poll interval (ms)",
+      "description": "How often to read agent state from herdr."
+    },
+    "socket_path": {
+      "label": "herdr socket path",
+      "description": "Leave empty for the default herdr session. Set it to watch a server started with HERDR_SOCKET_PATH."
+    },
+    "spinner_interval_ms": {
+      "label": "Working spinner speed (ms)",
+      "description": "How often the working-agent spinner advances a frame. Lower is faster but redraws the panel more often while a panel is open."
+    }
+  }
+}

@@ -1,0 +1,54 @@
+id           = "SharonFabin/claude-sessions"
+name         = "AI Agents"
+version      = "2.0.0"
+# 22: require() for shared.luau. 24: argv runAsync, so pane ids never pass through a shell.
+plugin_api   = 24
+author       = "SharonFabin"
+license      = "MIT"
+icon         = "sparkles"
+description  = "Lists herdr AI agents with their status and last update time; click one to jump to its Hyprland window and herdr pane."
+tags         = ["bar", "panel", "development"]
+dependencies = ["herdr", "hyprctl", "jq"]
+
+[[service]]
+id    = "service"
+entry = "service.luau"
+
+[[widget]]
+id    = "bar"
+entry = "bar.luau"
+
+[[panel]]
+id              = "panel"
+entry           = "panel.luau"
+width           = 460
+height          = 560
+placement       = "attached"
+position        = "auto"
+open_near_click = true
+capture_keys    = ["up", "down", "ctrl+n", "ctrl+p", "enter"]
+
+[[setting]]
+key             = "poll_interval_ms"
+type            = "int"
+label_key       = "settings.poll_interval_ms.label"
+description_key = "settings.poll_interval_ms.description"
+default         = 2000
+min             = 500
+max             = 10000
+
+[[setting]]
+key             = "socket_path"
+type            = "string"
+label_key       = "settings.socket_path.label"
+description_key = "settings.socket_path.description"
+default         = ""
+
+[[setting]]
+key             = "spinner_interval_ms"
+type            = "int"
+label_key       = "settings.spinner_interval_ms.label"
+description_key = "settings.spinner_interval_ms.description"
+default         = 100
+min             = 40
+max             = 500
